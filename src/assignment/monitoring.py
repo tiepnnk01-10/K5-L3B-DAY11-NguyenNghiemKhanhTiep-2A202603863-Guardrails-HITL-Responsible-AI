@@ -41,17 +41,45 @@ class MonitoringAlert:
     judge_checks: int = 0
     judge_fails: int = 0
 
-    def check_metrics(self) -> list[Alert]:
-        """TODO: compute rates, append Alert objects when thresholds exceeded."""
-        raise NotImplementedError("Implement MonitoringAlert.check_metrics")
+    def record(self, *, blocked: bool, layer: str | None) -> None:
+        """Cập nhật counter sau mỗi request (gọi từ pipeline)."""
+        self.total_requests += 1
+        if blocked:
+            self.blocked_requests += 1
+        if layer == "rate_limiter":
+            self.rate_limit_hits += 1
 
-    def export_json(self, filepath: str | None = None):
-        """TODO: write metrics + alerts to JSON under repo-root ``outputs/`` by default.
-        Use ``filepath or default_metrics_path()`` so running from ``src/`` does not
-        create ``src/outputs/``.
+    def check_metrics(self) -> list[Alert]:
+        """Compute rates; return the alerts fired by THIS check (also kept in self.alerts).
+
+        Alert cũ cùng metric bị thay bằng giá trị mới → gọi nhiều lần không bị trùng.
         """
-        _ = filepath or default_metrics_path()
-        raise NotImplementedError("Implement MonitoringAlert.export_json")
+        snap = self.snapshot()
+        candidates = [
+            ("block_rate", snap["block_rate"], self.block_rate_threshold,
+             "Block rate cao bất thường — có thể đang bị tấn công hoặc filter chặn nhầm."),
+            ("rate_limit_hits", float(self.rate_limit_hits), float(self.rate_limit_hit_threshold),
+             "Nhiều request bị rate limit — nghi spam / cost attack."),
+            ("judge_fail_rate", snap["judge_fail_rate"], self.judge_fail_rate_threshold,
+             "LLM judge đánh UNSAFE nhiều — kiểm tra lại model / prompt."),
+        ]
+        fired = [
+            Alert(metric=m, value=round(v, 4), threshold=t, message=msg)
+            for m, v, t, msg in candidates
+            if v > t
+        ]
+        fired_names = {a.metric for a in fired}
+        self.alerts = [a for a in self.alerts if a.metric not in fired_names] + fired
+        return fired
+
+    def export_json(self, filepath: str | None = None) -> str:
+        """Write metrics + alerts to JSON under repo-root ``outputs/`` by default."""
+        path = Path(filepath or default_metrics_path())
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(self.snapshot(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return str(path)
 
     def snapshot(self) -> dict:
         block_rate = (

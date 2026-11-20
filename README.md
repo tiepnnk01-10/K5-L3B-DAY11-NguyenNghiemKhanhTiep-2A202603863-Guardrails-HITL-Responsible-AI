@@ -1,5 +1,25 @@
 # Day 11 — Controlled Agent Security (2026)
 
+| Thông tin | |
+|---|---|
+| **Họ và tên** | Nguyễn Nghiêm Khánh Tiệp |
+| **MSSV** | 2A202603863 |
+| **Lớp** | K5-L3B |
+
+**Cách chạy nhanh** (từ gốc repo, sau khi tạo `.venv` và điền `.env` từ `.env.example`):
+
+```powershell
+python src/main.py --part 2   # CP2: guardrails (không cần API key)
+python src/main.py --part 3   # CP3: pipeline -> outputs/results.json (cần OPENROUTER_API_KEY)
+python src/main.py --part 4   # CP4: red-team -> outputs/attack_results.json (cần key Red)
+python scripts/grade.py --submission-dir . --out outputs/grade_report.json
+```
+
+> Ghi chú chạy: model Blue `liquid/lfm-3-1.7b:free` trên OpenRouter hay trả lỗi 504/429 khi quá tải;
+> các câu có `layer: "llm_error"` trong `outputs/results.json` là lỗi hạ tầng, không phải guardrail chặn nhầm.
+
+---
+
 > 👤 **Hình thức:** bài tập **cá nhân** (1 người / 1 MSSV).  
 > 🎯 **Mục tiêu:** đóng vai **Blue Team** để học cách xây Guardrails phòng thủ, rồi đóng vai **Red Team** để tấn công agent **Red** hoặc **Red Advance**.  
 > ✅ Làm theo **Checkpoint 1 → 5** trong [`CHECKPOINTS.md`](CHECKPOINTS.md) · nộp theo [`SUBMISSION.md`](SUBMISSION.md).
